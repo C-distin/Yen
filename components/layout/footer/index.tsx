@@ -9,6 +9,7 @@ import {
   Phone,
   type LucideIcon,
 } from "lucide-react";
+import { FaXTwitter } from "react-icons/fa6";
 
 interface SocialLinkProps {
   icon: LucideIcon;
@@ -40,7 +41,7 @@ export function Footer() {
       label: "Follow us on Instagram",
     },
     {
-      icon: Twitter,
+      icon: FaXTwitter,
       link: "https://twitter.com/yendaakyejobcenter",
       label: "Follow us on Twitter",
     },

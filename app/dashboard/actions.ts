@@ -8,76 +8,81 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL as string;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Helper function to upload logo to Supabase Storage
 async function uploadLogoToSupabase(file: File): Promise<string> {
   try {
     // Generate unique filename
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `company-logos/${fileName}`;
 
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('company-assets')
+      .from("company-assets")
       .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
+        cacheControl: "3600",
+        upsert: false,
       });
 
     if (error) {
-      console.error('Supabase upload error:', error);
+      console.error("Supabase upload error:", error);
       throw new Error(`Failed to upload logo: ${error.message}`);
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('company-assets')
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("company-assets").getPublicUrl(filePath);
 
     return publicUrl;
   } catch (error) {
-    console.error('Error uploading logo:', error);
-    throw new Error('Failed to upload logo to storage');
+    console.error("Error uploading logo:", error);
+    throw new Error("Failed to upload logo to storage");
   }
 }
 
 // Helper function to upload CV to Supabase Storage
-async function uploadCVToSupabase(file: File, applicantName: string): Promise<string> {
+async function uploadCVToSupabase(
+  file: File,
+  applicantName: string,
+): Promise<string> {
   try {
     // Generate unique filename with applicant name
-    const fileExt = file.name.split('.').pop();
-    const sanitizedName = applicantName.replace(/[^a-zA-Z0-9]/g, '_');
+    const fileExt = file.name.split(".").pop();
+    const sanitizedName = applicantName.replace(/[^a-zA-Z0-9]/g, "_");
     const timestamp = Date.now();
     const fileName = `${sanitizedName}_${timestamp}.${fileExt}`;
     const filePath = `job-applications/${fileName}`;
 
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('job-applications')
+      .from("job-applications")
       .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
+        cacheControl: "3600",
+        upsert: false,
       });
 
     if (error) {
-      console.error('Supabase CV upload error:', error);
+      console.error("Supabase CV upload error:", error);
       throw new Error(`Failed to upload CV: ${error.message}`);
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('job-applications')
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("job-applications").getPublicUrl(filePath);
 
     return publicUrl;
   } catch (error) {
-    console.error('Error uploading CV:', error);
-    throw new Error('Failed to upload CV to storage');
+    console.error("Error uploading CV:", error);
+    throw new Error("Failed to upload CV to storage");
   }
 }
 
@@ -86,19 +91,19 @@ async function deleteLogoFromSupabase(logoUrl: string): Promise<void> {
   try {
     // Extract file path from URL
     const url = new URL(logoUrl);
-    const pathParts = url.pathname.split('/');
-    const filePath = pathParts.slice(-2).join('/'); // Get company-logos/filename
-    
+    const pathParts = url.pathname.split("/");
+    const filePath = pathParts.slice(-2).join("/"); // Get company-logos/filename
+
     const { error } = await supabase.storage
-      .from('company-assets')
+      .from("company-assets")
       .remove([filePath]);
 
     if (error) {
-      console.error('Error deleting logo:', error);
+      console.error("Error deleting logo:", error);
       // Don't throw error for deletion failures - continue with database update
     }
   } catch (error) {
-    console.error('Error parsing logo URL for deletion:', error);
+    console.error("Error parsing logo URL for deletion:", error);
     // Don't throw error - continue with database update
   }
 }
@@ -108,19 +113,19 @@ async function deleteCVFromSupabase(cvUrl: string): Promise<void> {
   try {
     // Extract file path from URL
     const url = new URL(cvUrl);
-    const pathParts = url.pathname.split('/');
-    const filePath = pathParts.slice(-2).join('/'); // Get job-applications/filename
-    
+    const pathParts = url.pathname.split("/");
+    const filePath = pathParts.slice(-2).join("/"); // Get job-applications/filename
+
     const { error } = await supabase.storage
-      .from('job-applications')
+      .from("job-applications")
       .remove([filePath]);
 
     if (error) {
-      console.error('Error deleting CV:', error);
+      console.error("Error deleting CV:", error);
       // Don't throw error for deletion failures
     }
   } catch (error) {
-    console.error('Error parsing CV URL for deletion:', error);
+    console.error("Error parsing CV URL for deletion:", error);
     // Don't throw error - continue with database update
   }
 }
@@ -138,43 +143,42 @@ export async function createCompany(data: {
 }) {
   try {
     let logoUrl: string | null = null;
-    
+
     // Handle file upload if logo is provided
     if (data.logo && data.logo instanceof File) {
       logoUrl = await uploadLogoToSupabase(data.logo);
     }
-    
-    await db
-      .insert(companies)
-      .values({ 
-        name: data.name,
-        logo: logoUrl,
-        description: data.description,
-        founded: data.founded,
-        location: data.location,
-        employees: data.employees,
-        website: data.website,
-        email: data.email,
-        createdAt: new Date(), 
-        updatedAt: new Date() 
-      });
-    
+
+    await db.insert(companies).values({
+      name: data.name,
+      logo: logoUrl,
+      description: data.description,
+      founded: data.founded,
+      location: data.location,
+      employees: data.employees,
+      website: data.website,
+      email: data.email,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     revalidatePath("/dashboard");
     revalidatePath("/jobs");
     revalidatePath("/");
     return { success: true, message: "Company created successfully!" };
   } catch (error) {
     console.error("Error creating company:", error);
-    
+
     // If logo was uploaded but database insert failed, try to clean up
     if (data.logo && data.logo instanceof File) {
-      // Note: We can't easily clean up here without the logoUrl, 
+      // Note: We can't easily clean up here without the logoUrl,
       // but this is a rare edge case
     }
-    
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to create company" 
+
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to create company",
     };
   }
 }
@@ -191,32 +195,32 @@ export async function updateCompany(
     employees?: string | null;
     website?: string | null;
     email?: string | null;
-  }
+  },
 ) {
   try {
     let logoUrl: string | null = null;
     let shouldUpdateLogo = false;
-    
+
     // Get current company data to check for existing logo
     const currentCompany = await db
       .select({ logo: companies.logo })
       .from(companies)
       .where(eq(companies.id, id))
       .limit(1);
-    
+
     const existingLogo = currentCompany[0]?.logo;
-    
+
     // Handle file upload if new logo is provided
     if (data.logo && data.logo instanceof File) {
       logoUrl = await uploadLogoToSupabase(data.logo);
       shouldUpdateLogo = true;
-      
+
       // Delete old logo if it exists
       if (existingLogo) {
         await deleteLogoFromSupabase(existingLogo);
       }
     }
-    
+
     const updateData: any = {
       name: data.name,
       description: data.description,
@@ -225,28 +229,26 @@ export async function updateCompany(
       employees: data.employees,
       website: data.website,
       email: data.email,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     // Only update logo if a new file was provided
     if (shouldUpdateLogo) {
       updateData.logo = logoUrl;
     }
-    
-    await db
-      .update(companies)
-      .set(updateData)
-      .where(eq(companies.id, id));
-    
+
+    await db.update(companies).set(updateData).where(eq(companies.id, id));
+
     revalidatePath("/dashboard");
     revalidatePath("/jobs");
     revalidatePath("/");
     return { success: true, message: "Company updated successfully!" };
   } catch (error) {
     console.error("Error updating company:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to update company" 
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to update company",
     };
   }
 }
@@ -260,24 +262,29 @@ export async function deleteCompany(id: number) {
       .from(companies)
       .where(eq(companies.id, id))
       .limit(1);
-    
+
     const logoUrl = companyData[0]?.logo;
-    
+
     await db.transaction(async (tx) => {
       // First get all jobs for this company
-      const companyJobs = await tx.select({ id: jobs.id }).from(jobs).where(eq(jobs.companyId, id));
-      const jobIds = companyJobs.map(job => job.id);
-      
+      const companyJobs = await tx
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(eq(jobs.companyId, id));
+      const jobIds = companyJobs.map((job) => job.id);
+
       if (jobIds.length > 0) {
         // Get all CVs to delete from storage
         const jobApplications = await tx
           .select({ resume: applications.resume })
           .from(applications)
           .where(inArray(applications.jobId, jobIds));
-        
+
         // Delete applications
-        await tx.delete(applications).where(inArray(applications.jobId, jobIds));
-        
+        await tx
+          .delete(applications)
+          .where(inArray(applications.jobId, jobIds));
+
         // Delete CVs from storage
         for (const app of jobApplications) {
           if (app.resume) {
@@ -285,28 +292,29 @@ export async function deleteCompany(id: number) {
           }
         }
       }
-      
+
       // Then delete all jobs for this company
       await tx.delete(jobs).where(eq(jobs.companyId, id));
-      
+
       // Finally delete the company
       await tx.delete(companies).where(eq(companies.id, id));
     });
-    
+
     // Delete logo from storage after successful database deletion
     if (logoUrl) {
       await deleteLogoFromSupabase(logoUrl);
     }
-    
+
     revalidatePath("/dashboard");
     revalidatePath("/jobs");
     revalidatePath("/");
     return { success: true, message: "Company deleted successfully!" };
   } catch (error) {
     console.error("Error deleting company:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to delete company" 
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to delete company",
     };
   }
 }
@@ -322,7 +330,10 @@ export async function getCompanies() {
 
 export async function getCompanyById(id: number) {
   try {
-    const result = await db.select().from(companies).where(eq(companies.id, id));
+    const result = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id));
     return result[0] || null;
   } catch (error) {
     console.error("Error fetching company:", error);
@@ -350,48 +361,51 @@ export async function createJob(data: {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    
+
     revalidatePath("/dashboard");
     revalidatePath("/jobs");
     revalidatePath("/");
     return { success: true, message: "Job created successfully!" };
   } catch (error) {
     console.error("Error creating job:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to create job" 
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to create job",
     };
   }
 }
 
 // update job action
-export async function updateJob(id: number, data: {
-  title: string;
-  companyId: number;
-  location: string;
-  salary?: string;
-  type: string;
-  category: string;
-  description: string;
-  requirements: string;
-  benefits: string;
-  featured?: boolean;
-}) {
+export async function updateJob(
+  id: number,
+  data: {
+    title: string;
+    companyId: number;
+    location: string;
+    salary?: string;
+    type: string;
+    category: string;
+    description: string;
+    requirements: string;
+    benefits: string;
+    featured?: boolean;
+  },
+) {
   try {
     await db
       .update(jobs)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(jobs.id, id));
-    
+
     revalidatePath("/dashboard");
     revalidatePath("/jobs");
     revalidatePath("/");
     return { success: true, message: "Job updated successfully!" };
   } catch (error) {
     console.error("Error updating job:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to update job" 
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to update job",
     };
   }
 }
@@ -405,13 +419,13 @@ export async function deleteJob(id: number) {
         .select({ resume: applications.resume })
         .from(applications)
         .where(eq(applications.jobId, id));
-      
+
       // Delete applications from database
       await tx.delete(applications).where(eq(applications.jobId, id));
-      
+
       // Delete the job
       await tx.delete(jobs).where(eq(jobs.id, id));
-      
+
       // Delete CVs from storage
       for (const app of jobApplications) {
         if (app.resume) {
@@ -419,16 +433,16 @@ export async function deleteJob(id: number) {
         }
       }
     });
-    
+
     revalidatePath("/dashboard");
     revalidatePath("/jobs");
     revalidatePath("/");
     return { success: true, message: "Job deleted successfully!" };
   } catch (error) {
     console.error("Error deleting job:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to delete job" 
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete job",
     };
   }
 }
@@ -463,7 +477,7 @@ export async function getJobs() {
       .leftJoin(companies, eq(jobs.companyId, companies.id))
       .orderBy(desc(jobs.featured), desc(jobs.postedAt));
 
-    return result.map(row => ({
+    return result.map((row) => ({
       ...row,
       featured: row.featured ?? false,
       company: {
@@ -471,7 +485,7 @@ export async function getJobs() {
         name: row.company?.name ?? "Unknown Company",
         logo: row.company?.logo ?? null,
         location: row.company?.location ?? null,
-      }
+      },
     }));
   } catch (error) {
     console.error("Error fetching jobs:", error);
@@ -511,7 +525,7 @@ export async function getFeaturedJobs() {
       .orderBy(desc(jobs.postedAt))
       .limit(6);
 
-    return result.map(row => ({
+    return result.map((row) => ({
       ...row,
       featured: row.featured ?? false,
       company: {
@@ -519,7 +533,7 @@ export async function getFeaturedJobs() {
         name: row.company?.name ?? "Unknown Company",
         logo: row.company?.logo ?? null,
         location: row.company?.location ?? null,
-      }
+      },
     }));
   } catch (error) {
     console.error("Error fetching featured jobs:", error);
@@ -568,7 +582,7 @@ export async function getJobById(id: number) {
         name: row.company?.name ?? "Unknown Company",
         logo: row.company?.logo ?? null,
         location: row.company?.location ?? null,
-      }
+      },
     };
   } catch (error) {
     console.error("Error fetching job:", error);
@@ -609,7 +623,7 @@ export async function submitJobApplication(data: {
   try {
     // Upload CV to Supabase Storage
     const cvUrl = await uploadCVToSupabase(data.resume, data.name);
-    
+
     // Save application to database
     await db.insert(applications).values({
       jobId: data.jobId,
@@ -620,14 +634,15 @@ export async function submitJobApplication(data: {
       coverLetter: data.coverLetter || null,
       createdAt: new Date(),
     });
-    
+
     revalidatePath("/dashboard");
     return { success: true, message: "Application submitted successfully!" };
   } catch (error) {
     console.error("Error submitting application:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to submit application" 
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to submit application",
     };
   }
 }
@@ -660,7 +675,7 @@ export async function getApplications(): Promise<ApplicationWithJob[]> {
       .leftJoin(companies, eq(jobs.companyId, companies.id))
       .orderBy(desc(applications.createdAt));
 
-    return result.map(row => ({
+    return result.map((row) => ({
       id: row.id,
       jobId: row.jobId,
       name: row.name,
@@ -669,15 +684,19 @@ export async function getApplications(): Promise<ApplicationWithJob[]> {
       resume: row.resume,
       coverLetter: row.coverLetter,
       createdAt: row.createdAt,
-      job: row.job ? {
-        id: row.job.id,
-        title: row.job.title,
-        company: row.job.company ? {
-          id: row.job.company.id,
-          name: row.job.company.name,
-          logo: row.job.company.logo,
-        } : undefined,
-      } : undefined,
+      job: row.job
+        ? {
+            id: row.job.id,
+            title: row.job.title,
+            company: row.job.company
+              ? {
+                  id: row.job.company.id,
+                  name: row.job.company.name,
+                  logo: row.job.company.logo,
+                }
+              : undefined,
+          }
+        : undefined,
     }));
   } catch (error) {
     console.error("Error fetching applications:", error);
@@ -686,7 +705,9 @@ export async function getApplications(): Promise<ApplicationWithJob[]> {
 }
 
 // Get applications for a specific job
-export async function getApplicationsByJobId(jobId: number): Promise<ApplicationWithJob[]> {
+export async function getApplicationsByJobId(
+  jobId: number,
+): Promise<ApplicationWithJob[]> {
   try {
     const result = await db
       .select({
@@ -714,7 +735,7 @@ export async function getApplicationsByJobId(jobId: number): Promise<Application
       .where(eq(applications.jobId, jobId))
       .orderBy(desc(applications.createdAt));
 
-    return result.map(row => ({
+    return result.map((row) => ({
       id: row.id,
       jobId: row.jobId,
       name: row.name,
@@ -723,15 +744,19 @@ export async function getApplicationsByJobId(jobId: number): Promise<Application
       resume: row.resume,
       coverLetter: row.coverLetter,
       createdAt: row.createdAt,
-      job: row.job ? {
-        id: row.job.id,
-        title: row.job.title,
-        company: row.job.company ? {
-          id: row.job.company.id,
-          name: row.job.company.name,
-          logo: row.job.company.logo,
-        } : undefined,
-      } : undefined,
+      job: row.job
+        ? {
+            id: row.job.id,
+            title: row.job.title,
+            company: row.job.company
+              ? {
+                  id: row.job.company.id,
+                  name: row.job.company.name,
+                  logo: row.job.company.logo,
+                }
+              : undefined,
+          }
+        : undefined,
     }));
   } catch (error) {
     console.error("Error fetching applications for job:", error);
@@ -748,24 +773,25 @@ export async function deleteApplication(id: number) {
       .from(applications)
       .where(eq(applications.id, id))
       .limit(1);
-    
+
     const cvUrl = applicationData[0]?.resume;
-    
+
     // Delete from database
     await db.delete(applications).where(eq(applications.id, id));
-    
+
     // Delete CV from storage
     if (cvUrl) {
       await deleteCVFromSupabase(cvUrl);
     }
-    
+
     revalidatePath("/dashboard");
     return { success: true, message: "Application deleted successfully!" };
   } catch (error) {
     console.error("Error deleting application:", error);
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to delete application" 
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to delete application",
     };
   }
 }
@@ -774,9 +800,13 @@ export async function deleteApplication(id: number) {
 export async function getAnalytics() {
   try {
     const [totalJobs] = await db.select({ count: count(jobs.id) }).from(jobs);
-    const [totalCompanies] = await db.select({ count: count(companies.id) }).from(companies);
-    const [totalApplications] = await db.select({ count: count(applications.id) }).from(applications);
-    
+    const [totalCompanies] = await db
+      .select({ count: count(companies.id) })
+      .from(companies);
+    const [totalApplications] = await db
+      .select({ count: count(applications.id) })
+      .from(applications);
+
     return {
       totalJobs: totalJobs.count,
       totalCompanies: totalCompanies.count,
