@@ -179,7 +179,7 @@ export function Home({ featuredJobs, stats }: HomeProps) {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-white text-white hover:bg-white hover:text-teal-700 font-medium px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 text-lg"
+                    className="border-white text-amber-400 hover:bg-white hover:text-teal-700 font-medium px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 text-lg"
                   >
                     Learn More
                   </Button>
@@ -512,7 +512,7 @@ export function Home({ featuredJobs, stats }: HomeProps) {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-white hover:bg-white hover:text-teal-700 font-medium px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+                  className="border-white text-amber-400 hover:bg-white hover:text-teal-700 font-medium px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105"
                 >
                   <Users size={18} className="mr-2" />
                   Get Started
