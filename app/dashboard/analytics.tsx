@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, Building2, Briefcase, Users, FileText } from "lucide-react";
